@@ -1,10 +1,15 @@
 from urllib.parse import urlparse
 
-import nest_asyncio
-
 from aiohttp import web, ClientSession, ClientTimeout
+from aiohttp_apispec import (
+    docs,
+    request_schema,
+    setup_aiohttp_apispec,
+    validation_middleware,
+)
 
 from chatelet import config
+from chatelet import schemas
 from chatelet.db import Subscription
 from chatelet.queue import queue, retry
 from chatelet.log import log
@@ -13,6 +18,7 @@ api = web.Application()
 routes = web.RouteTableDef()
 
 if config.EAGER_QUEUES:
+    import nest_asyncio
     nest_asyncio.apply()
 
 
@@ -22,8 +28,24 @@ class SubscriptionsView(web.View):
         subs = await Subscription.query.gino.all()
         return web.json_response([s.to_dict() for s in subs])
 
+    @docs(
+        tags=["subscribe"],
+        summary="Add a subscription",
+        responses={
+            201: {
+                "schema": schemas.AddSubscriptionResponse(),
+                "description": "Subscription created",
+            },
+            200: {
+                "schema": schemas.AddSubscriptionResponse(),
+                "description": "Subscription already exists",
+            },
+            404: {"description": "Not found"},  # responses without schema
+            422: {"description": "Validation error"},
+        },
+    )
+    @request_schema(schemas.AddSubscription())
     async def post(self):
-        # TODO: validate request with marshmallow
         data = await self.request.json()
 
         sub = Subscription.query
@@ -67,3 +89,11 @@ class PublicationsView(web.View):
 
 
 api.add_routes(routes)
+api.middlewares.append(validation_middleware)
+setup_aiohttp_apispec(
+    app=api,
+    title="chatelet API",
+    version="v1",
+    url="/docs/swagger.json",
+    swagger_path="/docs/",
+)
