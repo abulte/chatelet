@@ -18,7 +18,7 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 
 `make serve`
 
-[See the API doc here.](docs/apidoc.md)
+[See the API doc in markdown here](docs/apidoc.md), or [explore via Swagger UI](https://petstore.swagger.io/?url=https://raw.githubusercontent.com/abulte/chatelet/master/docs/swagger.json).
 
 ### Worker
 
