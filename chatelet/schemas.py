@@ -9,3 +9,8 @@ class AddSubscription(Schema):
 
 class AddSubscriptionResponse(AddSubscription):
     id = fields.Int()
+
+
+class AddPublication(Schema):
+    event = fields.Str(required=True)
+    payload = fields.Dict(required=True)

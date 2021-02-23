@@ -18,13 +18,15 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 
 `make serve`
 
+[See the API doc here.](docs/apidoc.md)
+
 ### Worker
 
 `make work`
 
 ## TODO
 
-- [ ] docs (API)
+- [x] docs (API)
 - [ ] declare events and configuration (parser, transformer, dependencies...)
 - [ ] handle event filtering
     - organisation=xxx&private=False

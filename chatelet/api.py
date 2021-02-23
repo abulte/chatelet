@@ -24,6 +24,16 @@ if config.EAGER_QUEUES:
 
 @routes.view("/subscriptions/")
 class SubscriptionsView(web.View):
+    @docs(
+        tags=["subscribe"],
+        summary="List subscriptions",
+        responses={
+            200: {
+                "schema": schemas.AddSubscriptionResponse(many=True),
+                "description": "List of subscriptions",
+            },
+        },
+    )
     async def get(self):
         subs = await Subscription.query.gino.all()
         return web.json_response([s.to_dict() for s in subs])
@@ -65,6 +75,9 @@ class SubscriptionsView(web.View):
 
 
 async def dispatch(subscription, data):
+    # NB: using a new ClientSession for each dispatch is suboptimal
+    # but how to reuse a session in worker threads?
+    # TODO: apply event_filter
     async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
         log.debug("Dispatching to %s (%s)", subscription.url, subscription.id)
         await client.post(subscription.url, json={
@@ -78,11 +91,22 @@ async def dispatch(subscription, data):
 
 @routes.view("/publications/")
 class PublicationsView(web.View):
+    @docs(
+        tags=["publish"],
+        summary="Publish an event",
+        responses={
+            201: {
+                "description": "Publication created",
+            },
+            404: {"description": "Not found"},
+            422: {"description": "Validation error"},
+        },
+    )
+    @request_schema(schemas.AddPublication())
     async def post(self):
         data = await self.request.json()
         log.debug("Publishing: %s", data)
         subs = Subscription.query.where(Subscription.event == data["event"])
-        # TODO: apply filter
         for sub in await subs.gino.all():
             queue.enqueue(dispatch, sub, data, retry=retry)
         raise web.HTTPCreated()
