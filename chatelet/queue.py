@@ -1,4 +1,3 @@
-import redis
 from rq import Queue, Retry
 from redis import Redis
 
