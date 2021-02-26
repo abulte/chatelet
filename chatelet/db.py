@@ -8,9 +8,11 @@ class Subscription(db.Model):
 
     id = db.Column(db.Integer(), primary_key=True)
     event = db.Column(db.Unicode())
+    # TODO: move to json (for types)
     event_filter = db.Column(db.Unicode())
     url = db.Column(db.Unicode())
 
+    # FIXME: unique does not apply constraint
     _idx1 = db.Index(
         "subscriptions_idx_url_event_event_filter",
         "event", "event_filter", "url",

@@ -6,6 +6,7 @@ from chatelet.app import app
 
 @cli
 async def apidoc():
+    """Launch a server just to get swagger.json :facepalm:"""
     async with TestClient(TestServer(app)) as client:
         resp = await client.get("/api/docs/swagger.json")
         assert resp.status == 200

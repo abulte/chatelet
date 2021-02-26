@@ -14,7 +14,6 @@ from chatelet.db import Subscription
 from chatelet.queue import queue, retry
 from chatelet.log import log
 
-api = web.Application()
 routes = web.RouteTableDef()
 
 if config.EAGER_QUEUES:
@@ -50,12 +49,14 @@ class SubscriptionsView(web.View):
                 "schema": schemas.AddSubscriptionResponse(),
                 "description": "Subscription already exists",
             },
-            404: {"description": "Not found"},  # responses without schema
+            403: {"description": "The url domain is not in accept list"},
+            404: {"description": "Not found"},
             422: {"description": "Validation error"},
         },
     )
     @request_schema(schemas.AddSubscription())
     async def post(self):
+        # TODO: use validated data from marshmallow
         data = await self.request.json()
 
         sub = Subscription.query
@@ -70,6 +71,7 @@ class SubscriptionsView(web.View):
         parsed = urlparse(data["url"])
         if not any([parsed.netloc.endswith(d) for d in config.ALLOWED_DOMAINS]):
             raise web.HTTPForbidden()
+
         sub = await Subscription.create(**data)
         return web.json_response(sub.to_dict(), status=201)
 
@@ -97,6 +99,8 @@ class PublicationsView(web.View):
         responses={
             201: {
                 "description": "Publication created",
+                # dummy to document the dispatch payload
+                "schema": schemas.DispatchEvent(),
             },
             404: {"description": "Not found"},
             422: {"description": "Validation error"},
@@ -108,16 +112,19 @@ class PublicationsView(web.View):
         log.debug("Publishing: %s", data)
         subs = Subscription.query.where(Subscription.event == data["event"])
         for sub in await subs.gino.all():
-            queue.enqueue(dispatch, sub, data, retry=retry)
+            queue().enqueue(dispatch, sub, data, retry=retry)
         raise web.HTTPCreated()
 
 
-api.add_routes(routes)
-api.middlewares.append(validation_middleware)
-setup_aiohttp_apispec(
-    app=api,
-    title="chatelet API",
-    version="v1",
-    url="/docs/swagger.json",
-    swagger_path="/docs/",
-)
+def api_factory():
+    api = web.Application()
+    api.add_routes(routes)
+    api.middlewares.append(validation_middleware)
+    setup_aiohttp_apispec(
+        app=api,
+        title="chatelet API",
+        version="v1",
+        url="/docs/swagger.json",
+        swagger_path="/docs/",
+    )
+    return api
