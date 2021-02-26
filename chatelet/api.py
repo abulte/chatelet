@@ -7,6 +7,7 @@ from aiohttp_apispec import (
     setup_aiohttp_apispec,
     validation_middleware,
 )
+from jsonpath2.path import Path
 
 from chatelet import config
 from chatelet import schemas
@@ -56,14 +57,14 @@ class SubscriptionsView(web.View):
     )
     @request_schema(schemas.AddSubscription())
     async def post(self):
-        # TODO: use validated data from marshmallow
-        data = await self.request.json()
+        data = self.request["data"]
 
         sub = Subscription.query
-        # TODO: handle a list of subscribable events
+        # TODO: handle a list of subscriptable events
         sub = sub.where(Subscription.event == data["event"])
         sub = sub.where(Subscription.url == data["url"])
-        sub = sub.where(Subscription.event_filter == data["event_filter"])
+        if "event_filter" in data:
+            sub = sub.where(Subscription.event_filter == data["event_filter"])
         sub = await sub.gino.first()
         if sub:
             return web.json_response(sub.to_dict(), status=200)
@@ -79,9 +80,14 @@ class SubscriptionsView(web.View):
 async def dispatch(subscription, data):
     # NB: using a new ClientSession for each dispatch is suboptimal
     # but how to reuse a session in worker threads?
-    # TODO: apply event_filter
     async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
-        log.debug("Dispatching to %s (%s)", subscription.url, subscription.id)
+        log.debug("Dispatching %s to %s (%s)",
+                  subscription.event, subscription.url, subscription.id)
+        if subscription.event_filter:
+            q = Path.parse_str(subscription.event_filter).match(data["payload"])
+            if not list(q):
+                log.debug("Skipped because of event filter: %s", subscription.event_filter)
+                return
         await client.post(subscription.url, json={
             "ok": True,
             "event": subscription.event,

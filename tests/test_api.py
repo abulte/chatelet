@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from unittest import mock
 
 import pytest
@@ -52,31 +53,27 @@ def rmock():
         yield m
 
 
-@pytest.fixture()
+@pytest.fixture
 async def subscription(client):
-    return await client.post("/api/subscriptions/", json={
-        "event": "event",
-        "event_filter": "event_filter",
-        "url": "http://example.com"
-    })
+    async def create(**kwargs):
+        return await client.post("/api/subscriptions/", json=kwargs)
+    return partial(create, event="event", url="http://example.com")
 
 
 async def test_add_subscription_not_access_list(client):
     resp = await client.post("/api/subscriptions/", json={
         "event": "event",
-        "event_filter": "event_filter",
         "url": "http://nimportquoi.com"
     })
     assert resp.status == 403
 
 
 async def test_add_subscription(client, subscription):
-    # first one created by fixture
-    assert subscription.status == 201
+    sub = await subscription()
+    assert sub.status == 201
 
     resp = await client.post("/api/subscriptions/", json={
         "event": "event",
-        "event_filter": "event_filter",
         "url": "http://example.com"
     })
     assert resp.status == 200
@@ -99,9 +96,18 @@ async def test_add_subscription_error(client):
     assert resp.status == 422
     assert "url" in await resp.json()
 
+    resp = await client.post("/api/subscriptions/", json={
+        "event": "event",
+        "event_filter": "notajsonpath",
+        "url": "http://example.com",
+    })
+    assert resp.status == 422
+    assert "event_filter" in await resp.json()
+
 
 async def test_publish(client, rmock, subscription):
     """Publish an event and dispatch it to one subscriber"""
+    await subscription()
     rmock.post("http://example.com")
     payload = {
         "hop": "la",
@@ -117,8 +123,44 @@ async def test_publish(client, rmock, subscription):
     r = rmock.requests[rkey]
     assert r[0].kwargs["json"] == {
         "event": "event",
-        "event_filter": "event_filter",
+        "event_filter": None,
         "ok": True,
         "payload": payload,
         "subscription": 1
     }
+
+
+async def test_publish_event_filter_ok(client, rmock, subscription):
+    """Publish an event and dispatch it to one subscriber"""
+    rmock.post("http://example.com")
+    payload = {
+        "hop": "la",
+        "oops": {"ta": "da"},
+    }
+    sub = await subscription(event_filter='$[?(@.hop = "la")]')
+    assert sub.status == 201
+    resp = await client.post("/api/publications/", json={
+        "event": "event",
+        "payload": payload,
+    })
+    assert resp.status == 201
+    rkey = ("POST", URL("http://example.com"))
+    assert rkey in rmock.requests
+
+
+async def test_publish_event_filter_ko(client, rmock, subscription):
+    """Publish an event and do _not_ dispatch it to one subscriber"""
+    rmock.post("http://example.com")
+    payload = {
+        "hop": "la",
+        "oops": {"ta": "da"},
+    }
+    sub = await subscription(event_filter='$[?(@.hop = "NOT")]')
+    assert sub.status == 201
+    resp = await client.post("/api/publications/", json={
+        "event": "event",
+        "payload": payload,
+    })
+    assert resp.status == 201
+    rkey = ("POST", URL("http://example.com"))
+    assert rkey not in rmock.requests

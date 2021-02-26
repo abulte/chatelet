@@ -28,8 +28,8 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 
 - [x] docs (API)
 - [ ] declare events and configuration (parser, transformer, dependencies...)
-- [ ] handle event filtering
-    - organisation=xxx&private=False
+- [x] handle event filtering
+    - via JSONPath
 - [ ] add validation of intent when subscribing
 - [ ] deploy to dokku
 - [ ] log publish and dispatch in DB?
