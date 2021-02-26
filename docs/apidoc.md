@@ -67,18 +67,18 @@ Publish an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| event | string |  | Yes |
-| event_filter | string |  | No |
-| url | string (url) |  | Yes |
 | id | integer |  | No |
+| event | string |  | Yes |
+| url | string (url) |  | Yes |
+| event_filter | string |  | No |
 
 #### AddSubscription
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | event | string |  | Yes |
-| event_filter | string |  | No |
 | url | string (url) |  | Yes |
+| event_filter | string |  | No |
 
 #### AddPublication
 
@@ -91,7 +91,7 @@ Publish an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| event | string |  | Yes |
 | subscription | integer |  | No |
 | ok | boolean |  | No |
+| event | string |  | Yes |
 | payload | object |  | No |
