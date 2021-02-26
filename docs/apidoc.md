@@ -36,6 +36,7 @@ Add a subscription
 | ---- | ----------- | ------ |
 | 200 | Subscription already exists | [AddSubscriptionResponse](#addsubscriptionresponse) |
 | 201 | Subscription created | [AddSubscriptionResponse](#addsubscriptionresponse) |
+| 403 | The url domain is not in accept list |  |
 | 404 | Not found |  |
 | 422 | Validation error |  |
 
@@ -54,11 +55,11 @@ Publish an event
 
 ##### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | Publication created |
-| 404 | Not found |
-| 422 | Validation error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Publication created | [DispatchEvent](#dispatchevent) |
+| 404 | Not found |  |
+| 422 | Validation error |  |
 
 ### Models
 
@@ -67,17 +68,17 @@ Publish an event
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | event | string |  | Yes |
-| id | integer |  | No |
-| url | string (url) |  | Yes |
 | event_filter | string |  | No |
+| url | string (url) |  | Yes |
+| id | integer |  | No |
 
 #### AddSubscription
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | event | string |  | Yes |
-| url | string (url) |  | Yes |
 | event_filter | string |  | No |
+| url | string (url) |  | Yes |
 
 #### AddPublication
 
@@ -85,3 +86,12 @@ Publish an event
 | ---- | ---- | ----------- | -------- |
 | event | string |  | Yes |
 | payload | object |  | Yes |
+
+#### DispatchEvent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| event | string |  | Yes |
+| subscription | integer |  | No |
+| ok | boolean |  | No |
+| payload | object |  | No |
