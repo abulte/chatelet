@@ -207,3 +207,37 @@ async def test_validation_of_intent_done(client, rmock, mocker, subscription):
     assert len(r) == 2
     assert r[0].kwargs["json"] == {"intention": "pure"}
     assert "payload" in r[1].kwargs["json"]
+
+
+async def test_delayed_validation_of_intent(client, rmock, mocker, subscription):
+    """Publish an event and dispatch it to one subscriber"""
+    mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
+    # disable this or the test will fail since workers are eager
+    mocker.patch("chatelet.config.VALIDATION_OF_INTENT_IMMEDIATE", False)
+    rmock.post("http://example.com")
+
+    # unvalidated subscription
+    sub = await subscription()
+    assert sub.status == 201
+    sub = await sub.json()
+    # validate it with wrong value
+    resp = await client.post(f"/api/subscriptions/{sub['id']}/activate/", headers={
+        "x-hook-secret": "notthesecret"
+    })
+    assert resp.status == 422
+    # validate it
+    resp = await client.post(f"/api/subscriptions/{sub['id']}/activate/", headers={
+        "x-hook-secret": sub["secret"]
+    })
+    assert resp.status == 200
+
+    resp = await client.post("/api/publications/", json={
+        "event": "event",
+        "payload": {},
+    })
+    assert resp.status == 201
+    rkey = ("POST", URL("http://example.com"))
+    assert rkey in rmock.requests
+    r = rmock.requests[rkey]
+    assert len(r) == 1
+    assert "payload" in r[0].kwargs["json"]

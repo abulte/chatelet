@@ -12,6 +12,7 @@ class Subscription(db.Model):
     event_filter = db.Column(db.Unicode())
     url = db.Column(db.Unicode())
     active = db.Column(db.Boolean(), default=False)
+    secret = db.Column(db.Unicode())
 
     # FIXME: unique does not apply constraint
     _idx1 = db.Index(

@@ -33,9 +33,10 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 - [x] docs (API)
 - [x] handle event filtering
     - via JSONPath
-- [ ] add validation of intent when subscribing (https://resthooks.org/docs/security/)
+- [x] add validation of intent when subscribing (https://resthooks.org/docs/security/)
     - [x] immediate
-    - [ ] delayed
+    - [x] delayed
+- [ ] secure publication (shared secret?)
 - [ ] deploy to dokku
 - [ ] declare events and configuration (parser, transformer, dependencies...)
 - [ ] log publish and dispatch in DB?

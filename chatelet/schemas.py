@@ -42,3 +42,8 @@ class DispatchEvent(Schema):
     subscription = fields.Int()
     event = fields.Str(required=True)
     payload = fields.Dict()
+
+
+class HookSecretSchema(Schema):
+    class Meta:
+        fields = ("x-hook-secret", )

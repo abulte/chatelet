@@ -7,6 +7,7 @@ from aiohttp_apispec import (
     request_schema,
     setup_aiohttp_apispec,
     validation_middleware,
+    headers_schema,
 )
 from jsonpath2.path import Path
 
@@ -23,19 +24,18 @@ if config.EAGER_QUEUES:
     nest_asyncio.apply()
 
 
-async def validate_intent(url, sub_id):
-    secret = str(uuid4())
+async def validate_intent(sub):
     async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
-        log.debug("Validating intent for %s (%s)", url, sub_id)
-        res = await client.post(url, json={"intention": "pure"}, headers={
-            "x-hook-secret": secret
+        log.debug("Validating intent for %s (%s)", sub.url, sub.id)
+        res = await client.post(sub.url, json={"intention": "pure"}, headers={
+            "x-hook-secret": sub.secret
         })
-        if res.ok and res.headers.get('x-hook-secret') == secret:
-            sub = await Subscription.get(sub_id)
+        if res.ok and res.headers.get('x-hook-secret') == sub.secret:
+            sub = await Subscription.get(sub.id)
             await sub.update(active=True).apply()
-            log.debug("Intent validated for %s (%s)", url, sub_id)
+            log.debug("Intent validated for %s (%s)", sub.url, sub.id)
         else:
-            raise ValueError(f"Intent _not_ validated for {url} ({sub_id})")
+            raise ValueError(f"Intent _not_ validated for {sub.url} ({sub.id})")
 
 
 @routes.view("/subscriptions/")
@@ -96,10 +96,39 @@ class SubscriptionsView(web.View):
             raise web.HTTPForbidden()
 
         data["active"] = not config.VALIDATION_OF_INTENT
+        data["secret"] = str(uuid4())
         sub = await Subscription.create(**data)
-        if config.VALIDATION_OF_INTENT:
-            queue().enqueue(validate_intent, data["url"], sub.id, retry=retry)
+        if config.VALIDATION_OF_INTENT and config.VALIDATION_OF_INTENT_IMMEDIATE:
+            queue().enqueue(validate_intent, sub, retry=retry)
         return web.json_response(sub.to_dict(), status=201)
+
+
+@docs(
+    tags=["subscribe"],
+    summary="Validate intent of a subscription",
+    responses={
+        200: {
+            "description": "Subscription validated",
+        },
+        404: {"description": "Not found"},
+        422: {"description": "Validation error"},
+    },
+)
+@headers_schema(schemas.HookSecretSchema)
+@routes.post(r"/subscriptions/{id:\d+}/activate/")
+async def activate_subscription(request):
+    """Delayed validation of intent"""
+    sub_id = int(request.match_info["id"])
+    sub = await Subscription.get(sub_id)
+    if not sub:
+        raise web.HTTPNotFound()
+    if request.headers.get('x-hook-secret') == sub.secret:
+        await sub.update(active=True).apply()
+        log.debug("Intent validated for %s (%s)", sub.url, sub.id)
+        return web.json_response({"ok": True})
+    else:
+        log.debug("Failed intent validation for %s (%s)", sub.url, sub.id)
+        raise web.HTTPUnprocessableEntity(reason="Hook secret not matched")
 
 
 async def dispatch(subscription, data):
