@@ -1,3 +1,4 @@
+from uuid import uuid4
 from urllib.parse import urlparse
 
 from aiohttp import web, ClientSession, ClientTimeout
@@ -20,6 +21,21 @@ routes = web.RouteTableDef()
 if config.EAGER_QUEUES:
     import nest_asyncio
     nest_asyncio.apply()
+
+
+async def validate_intent(url, sub_id):
+    secret = str(uuid4())
+    async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
+        log.debug("Validating intent for %s (%s)", url, sub_id)
+        res = await client.post(url, json={"intention": "pure"}, headers={
+            "x-hook-secret": secret
+        })
+        if res.ok and res.headers.get('x-hook-secret') == secret:
+            sub = await Subscription.get(sub_id)
+            await sub.update(active=True).apply()
+            log.debug("Intent validated for %s (%s)", url, sub_id)
+        else:
+            raise ValueError(f"Intent _not_ validated for {url} ({sub_id})")
 
 
 @routes.view("/subscriptions/")
@@ -73,7 +89,10 @@ class SubscriptionsView(web.View):
         if not any([parsed.netloc.endswith(d) for d in config.ALLOWED_DOMAINS]):
             raise web.HTTPForbidden()
 
+        data["active"] = not config.VALIDATION_OF_INTENT
         sub = await Subscription.create(**data)
+        if config.VALIDATION_OF_INTENT:
+            queue().enqueue(validate_intent, data["url"], sub.id, retry=retry)
         return web.json_response(sub.to_dict(), status=201)
 
 
@@ -116,7 +135,9 @@ class PublicationsView(web.View):
     async def post(self):
         data = await self.request.json()
         log.debug("Publishing: %s", data)
-        subs = Subscription.query.where(Subscription.event == data["event"])
+        subs = Subscription.query\
+            .where(Subscription.event == data["event"])\
+            .where(Subscription.active == True)  # noqa
         for sub in await subs.gino.all():
             queue().enqueue(dispatch, sub, data, retry=retry)
         raise web.HTTPCreated()

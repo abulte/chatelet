@@ -8,3 +8,4 @@ ALLOWED_DOMAINS = [
     # for debugging purposes
     "webhook.site",
 ]
+VALIDATION_OF_INTENT = True

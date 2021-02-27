@@ -28,6 +28,7 @@ class AddSubscription(Schema):
 
 class AddSubscriptionResponse(AddSubscription):
     id = fields.Int()
+    active = fields.Boolean()
 
 
 class AddPublication(Schema):

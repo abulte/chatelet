@@ -8,9 +8,10 @@ class Subscription(db.Model):
 
     id = db.Column(db.Integer(), primary_key=True)
     event = db.Column(db.Unicode())
-    # TODO: move to json (for types)
+    # this is actually a JSONPath (cf schemas) but stored as a string
     event_filter = db.Column(db.Unicode())
     url = db.Column(db.Unicode())
+    active = db.Column(db.Boolean(), default=False)
 
     # FIXME: unique does not apply constraint
     _idx1 = db.Index(

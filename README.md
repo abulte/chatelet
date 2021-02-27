@@ -24,13 +24,19 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 
 `make work`
 
+## References
+
+- https://resthooks.org
+
 ## TODO
 
 - [x] docs (API)
-- [ ] declare events and configuration (parser, transformer, dependencies...)
 - [x] handle event filtering
     - via JSONPath
-- [ ] add validation of intent when subscribing
+- [ ] add validation of intent when subscribing (https://resthooks.org/docs/security/)
+    - [x] immediate
+    - [ ] delayed
 - [ ] deploy to dokku
+- [ ] declare events and configuration (parser, transformer, dependencies...)
 - [ ] log publish and dispatch in DB?
 - [ ] API on dispatch job status?

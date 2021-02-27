@@ -6,7 +6,7 @@ import pytest
 import nest_asyncio
 
 from aiohttp.test_utils import TestClient, TestServer
-from aioresponses import aioresponses
+from aioresponses import aioresponses, CallbackResult
 from fakeredis import FakeStrictRedis
 from yarl import URL
 
@@ -29,6 +29,7 @@ def setup():
 def setup_config(setup, mocker):
     mocker.patch("chatelet.config.ALLOWED_DOMAINS", ["example.com"])
     mocker.patch("chatelet.config.EAGER_QUEUES", True)
+    mocker.patch("chatelet.config.VALIDATION_OF_INTENT", False)
     mocker.patch("chatelet.queue.redis_conn", FakeStrictRedis())
 
 
@@ -133,12 +134,12 @@ async def test_publish(client, rmock, subscription):
 async def test_publish_event_filter_ok(client, rmock, subscription):
     """Publish an event and dispatch it to one subscriber"""
     rmock.post("http://example.com")
+    sub = await subscription(event_filter='$[?(@.hop = "la")]')
+    assert sub.status == 201
     payload = {
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    sub = await subscription(event_filter='$[?(@.hop = "la")]')
-    assert sub.status == 201
     resp = await client.post("/api/publications/", json={
         "event": "event",
         "payload": payload,
@@ -150,12 +151,12 @@ async def test_publish_event_filter_ok(client, rmock, subscription):
 
 async def test_publish_event_filter_ko(client, rmock, subscription):
     """Publish an event and do _not_ dispatch it to one subscriber"""
+    sub = await subscription(event_filter='$[?(@.hop = "NOT")]')
     rmock.post("http://example.com")
     payload = {
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    sub = await subscription(event_filter='$[?(@.hop = "NOT")]')
     assert sub.status == 201
     resp = await client.post("/api/publications/", json={
         "event": "event",
@@ -164,3 +165,45 @@ async def test_publish_event_filter_ko(client, rmock, subscription):
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey not in rmock.requests
+
+
+async def test_validation_of_intent_not_done(client, rmock, mocker, subscription):
+    """Publish an event and do _not_ dispatch it to one subscriber"""
+    mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
+    rmock.post("http://example.com")
+    await subscription()
+    resp = await client.post("/api/publications/", json={
+        "event": "event",
+        "payload": {},
+    })
+    assert resp.status == 201
+    rkey = ("POST", URL("http://example.com"))
+    assert rkey in rmock.requests
+    r = rmock.requests[rkey]
+    assert len(r) == 1
+    assert r[0].kwargs["json"] == {"intention": "pure"}
+
+
+async def test_validation_of_intent_done(client, rmock, mocker, subscription):
+    """Publish an event and dispatch it to one subscriber"""
+    mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
+
+    # validation of intent
+    def callback(_, **kwargs):
+        secret = kwargs["headers"].get("x-hook-secret")
+        return CallbackResult(status=200, headers={"x-hook-secret": secret})
+    rmock.post("http://example.com", callback=callback)
+    await subscription()
+
+    rmock.post("http://example.com")
+    resp = await client.post("/api/publications/", json={
+        "event": "event",
+        "payload": {},
+    })
+    assert resp.status == 201
+    rkey = ("POST", URL("http://example.com"))
+    assert rkey in rmock.requests
+    r = rmock.requests[rkey]
+    assert len(r) == 2
+    assert r[0].kwargs["json"] == {"intention": "pure"}
+    assert "payload" in r[1].kwargs["json"]
