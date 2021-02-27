@@ -61,6 +61,12 @@ class SubscriptionsView(web.View):
             201: {
                 "schema": schemas.AddSubscriptionResponse(),
                 "description": "Subscription created",
+                "headers": {
+                    "x-hook-secret": {
+                        "description": "The secret to use for validation of intent",
+                        "type": "uuid",
+                    }
+                }
             },
             200: {
                 "schema": schemas.AddSubscriptionResponse(),

@@ -67,31 +67,32 @@ Publish an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | integer |  | No |
-| event | string |  | Yes |
-| url | string (url) |  | Yes |
 | event_filter | string |  | No |
+| active | boolean |  | No |
+| id | integer |  | No |
+| url | string (url) |  | Yes |
+| event | string |  | Yes |
 
 #### AddSubscription
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | event | string |  | Yes |
-| url | string (url) |  | Yes |
 | event_filter | string |  | No |
+| url | string (url) |  | Yes |
 
 #### AddPublication
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| event | string |  | Yes |
 | payload | object |  | Yes |
+| event | string |  | Yes |
 
 #### DispatchEvent
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | subscription | integer |  | No |
+| payload | object |  | No |
 | ok | boolean |  | No |
 | event | string |  | Yes |
-| payload | object |  | No |
