@@ -58,12 +58,12 @@ def rmock():
 async def subscription(client):
     async def create(**kwargs):
         return await client.post("/api/subscriptions/", json=kwargs)
-    return partial(create, event="event", url="http://example.com")
+    return partial(create, event="test.event", url="http://example.com")
 
 
 async def test_add_subscription_not_access_list(client):
     resp = await client.post("/api/subscriptions/", json={
-        "event": "event",
+        "event": "test.event",
         "url": "http://nimportquoi.com"
     })
     assert resp.status == 403
@@ -74,7 +74,7 @@ async def test_add_subscription(client, subscription):
     assert sub.status == 201
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "event",
+        "event": "test.event",
         "url": "http://example.com"
     })
     assert resp.status == 200
@@ -91,14 +91,14 @@ async def test_add_subscription_error(client):
     assert all([e in data for e in ["url", "event"]])
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "event",
+        "event": "test.event",
         "url": "notanurl"
     })
     assert resp.status == 422
     assert "url" in await resp.json()
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "event",
+        "event": "test.event",
         "event_filter": "notajsonpath",
         "url": "http://example.com",
     })
@@ -115,7 +115,7 @@ async def test_publish(client, rmock, subscription):
         "oops": {"ta": "da"},
     }
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": payload,
     })
     assert resp.status == 201
@@ -123,7 +123,7 @@ async def test_publish(client, rmock, subscription):
     assert rkey in rmock.requests
     r = rmock.requests[rkey]
     assert r[0].kwargs["json"] == {
-        "event": "event",
+        "event": "test.event",
         "event_filter": None,
         "ok": True,
         "payload": payload,
@@ -141,7 +141,7 @@ async def test_publish_event_filter_ok(client, rmock, subscription):
         "oops": {"ta": "da"},
     }
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": payload,
     })
     assert resp.status == 201
@@ -159,7 +159,7 @@ async def test_publish_event_filter_ko(client, rmock, subscription):
     }
     assert sub.status == 201
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": payload,
     })
     assert resp.status == 201
@@ -173,7 +173,7 @@ async def test_validation_of_intent_not_done(client, rmock, mocker, subscription
     rmock.post("http://example.com")
     await subscription()
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": {},
     })
     assert resp.status == 201
@@ -197,7 +197,7 @@ async def test_validation_of_intent_done(client, rmock, mocker, subscription):
 
     rmock.post("http://example.com")
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": {},
     })
     assert resp.status == 201
@@ -232,7 +232,7 @@ async def test_delayed_validation_of_intent(client, rmock, mocker, subscription)
     assert resp.status == 200
 
     resp = await client.post("/api/publications/", json={
-        "event": "event",
+        "event": "test.event",
         "payload": {},
     })
     assert resp.status == 201

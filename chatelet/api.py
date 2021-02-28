@@ -52,6 +52,7 @@ class SubscriptionsView(web.View):
     )
     async def get(self):
         subs = await Subscription.query.gino.all()
+        # FIXME: use marshmallow for response (unsafe secret)
         return web.json_response([s.to_dict() for s in subs])
 
     @docs(
@@ -73,7 +74,7 @@ class SubscriptionsView(web.View):
                 "description": "Subscription already exists",
             },
             403: {"description": "The url domain is not in accept list"},
-            404: {"description": "Not found"},
+            404: {"description": "Event not found"},
             422: {"description": "Validation error"},
         },
     )
@@ -81,8 +82,11 @@ class SubscriptionsView(web.View):
     async def post(self):
         data = self.request["data"]
 
+        print('--------->', config.EVENTS, data["event"])
+        if data["event"] not in config.EVENTS:
+            raise web.HTTPNotFound()
+
         sub = Subscription.query
-        # TODO: handle a list of subscriptable events
         sub = sub.where(Subscription.event == data["event"])
         sub = sub.where(Subscription.url == data["url"])
         if "event_filter" in data:
@@ -100,6 +104,7 @@ class SubscriptionsView(web.View):
         sub = await Subscription.create(**data)
         if config.VALIDATION_OF_INTENT and config.VALIDATION_OF_INTENT_IMMEDIATE:
             queue().enqueue(validate_intent, sub, retry=retry)
+        # FIXME: use marshmallow for serialization
         return web.json_response(sub.to_dict(), status=201)
 
 
@@ -122,7 +127,7 @@ async def activate_subscription(request):
     sub = await Subscription.get(sub_id)
     if not sub:
         raise web.HTTPNotFound()
-    if request.headers.get('x-hook-secret') == sub.secret:
+    if request.headers.get("x-hook-secret") == sub.secret:
         await sub.update(active=True).apply()
         log.debug("Intent validated for %s (%s)", sub.url, sub.id)
         return web.json_response({"ok": True})

@@ -1,0 +1,5 @@
+events:
+  test.event:
+    secret: ${TEST_SECRET}
+  decapode.resource.modified:
+    secret: ${DECAPODE_SECRET}
