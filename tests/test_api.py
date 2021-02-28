@@ -84,7 +84,7 @@ async def test_add_subscription(client, subscription):
     assert len(await resp.json()) == 1
 
 
-async def test_add_subscription_error(client):
+async def test_add_subscription_error(client, subscription):
     resp = await client.post("/api/subscriptions/", json={})
     assert resp.status == 422
     data = await resp.json()
@@ -104,6 +104,9 @@ async def test_add_subscription_error(client):
     })
     assert resp.status == 422
     assert "event_filter" in await resp.json()
+
+    resp = await subscription(event="not.registered")
+    assert resp.status == 404
 
 
 async def test_publish(client, rmock, subscription):
