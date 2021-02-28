@@ -72,7 +72,7 @@ async def publication(client):
         return await client.post("/api/publications/", json=kwargs, headers={
             "x-hook-signature": sig
         })
-    return partial(create, event="test.event")
+    return partial(create, event="test.event", payload={})
 
 
 async def test_add_subscription_not_access_list(client):
@@ -131,11 +131,7 @@ async def test_publish(client, rmock, subscription, publication):
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    data = {
-        "event": "test.event",
-        "payload": payload,
-    }
-    resp = await publication(**data)
+    resp = await publication(payload=payload)
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
@@ -169,10 +165,7 @@ async def test_publish_wrong_signature(client):
 
 async def test_publish_unregistered_event(client, rmock, subscription, publication):
     """Publish an event and dispatch it to one subscriber"""
-    resp = await publication(**{
-        "event": "not.registered",
-        "payload": {},
-    })
+    resp = await publication(event="not.registered")
     assert resp.status == 404
 
 
@@ -185,10 +178,7 @@ async def test_publish_event_filter_ok(client, rmock, subscription, publication)
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    resp = await publication(**{
-        "event": "test.event",
-        "payload": payload,
-    })
+    resp = await publication(payload=payload)
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
@@ -203,10 +193,7 @@ async def test_publish_event_filter_ko(client, rmock, subscription, publication)
         "oops": {"ta": "da"},
     }
     assert sub.status == 201
-    resp = await publication(**{
-        "event": "test.event",
-        "payload": payload,
-    })
+    resp = await publication(payload=payload)
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey not in rmock.requests
@@ -217,10 +204,7 @@ async def test_validation_of_intent_not_done(client, rmock, mocker, subscription
     mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
     rmock.post("http://example.com")
     await subscription()
-    resp = await publication(**{
-        "event": "test.event",
-        "payload": {},
-    })
+    resp = await publication()
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
@@ -241,10 +225,7 @@ async def test_validation_of_intent_done(client, rmock, mocker, subscription, pu
     await subscription()
 
     rmock.post("http://example.com")
-    resp = await publication(**{
-        "event": "test.event",
-        "payload": {},
-    })
+    resp = await publication()
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
@@ -276,10 +257,7 @@ async def test_delayed_validation_of_intent(client, rmock, mocker, subscription,
     })
     assert resp.status == 200
 
-    resp = await publication(**{
-        "event": "test.event",
-        "payload": {},
-    })
+    resp = await publication()
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
