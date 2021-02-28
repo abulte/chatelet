@@ -1,5 +1,3 @@
-from yaml import safe_load
-
 DEBUG = True
 EAGER_QUEUES = False
 # Allows domains and subdomains
@@ -15,6 +13,3 @@ VALIDATION_OF_INTENT = True
 # deactivate immediate validation of intent
 # if VALIDATION_OF_INTENT is True, only delayed validation will be enabled
 VALIDATION_OF_INTENT_IMMEDIATE = True
-
-with open("events.yml") as efile:
-    EVENTS = safe_load(efile.read())["events"]

@@ -36,9 +36,9 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 - [x] add validation of intent when subscribing (https://resthooks.org/docs/security/)
     - [x] immediate
     - [x] delayed
+- [x] declare events and configuration
 - [ ] secure publication (shared secret by event?)
 - [ ] sign dispatch payload (x-hook-signature)
 - [ ] deploy to dokku
-- [x] declare events and configuration
 - [ ] log publish and dispatch in DB?
 - [ ] API on dispatch job status?

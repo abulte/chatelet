@@ -10,6 +10,7 @@ from aioresponses import aioresponses, CallbackResult
 from fakeredis import FakeStrictRedis
 from yarl import URL
 
+from chatelet import utils
 from chatelet.app import app_factory
 from chatelet.app import db
 
@@ -21,7 +22,10 @@ DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/postgres"
 # this really really really should run first (or "prod" db will get erased)
 @pytest.fixture(autouse=True, scope="session")
 def setup():
-    with mock.patch.dict(os.environ, {"DATABASE_URL": DATABASE_URL}):
+    with mock.patch.dict(os.environ, {
+        "DATABASE_URL": DATABASE_URL,
+        "TEST_SECRET": "suchsecret",
+    }):
         yield
 
 
@@ -59,6 +63,16 @@ async def subscription(client):
     async def create(**kwargs):
         return await client.post("/api/subscriptions/", json=kwargs)
     return partial(create, event="test.event", url="http://example.com")
+
+
+@pytest.fixture
+async def publication(client):
+    async def create(**kwargs):
+        sig = utils.sign(kwargs, os.getenv("TEST_SECRET"))
+        return await client.post("/api/publications/", json=kwargs, headers={
+            "x-hook-signature": sig
+        })
+    return partial(create, event="test.event")
 
 
 async def test_add_subscription_not_access_list(client):
@@ -109,7 +123,7 @@ async def test_add_subscription_error(client, subscription):
     assert resp.status == 404
 
 
-async def test_publish(client, rmock, subscription):
+async def test_publish(client, rmock, subscription, publication):
     """Publish an event and dispatch it to one subscriber"""
     await subscription()
     rmock.post("http://example.com")
@@ -117,10 +131,11 @@ async def test_publish(client, rmock, subscription):
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    resp = await client.post("/api/publications/", json={
+    data = {
         "event": "test.event",
         "payload": payload,
-    })
+    }
+    resp = await publication(**data)
     assert resp.status == 201
     rkey = ("POST", URL("http://example.com"))
     assert rkey in rmock.requests
@@ -134,16 +149,34 @@ async def test_publish(client, rmock, subscription):
     }
 
 
-async def test_publish_unregistered_event(client, rmock, subscription):
-    """Publish an event and dispatch it to one subscriber"""
+async def test_publish_wrong_signature(client):
+    # no signature
     resp = await client.post("/api/publications/", json={
+        "event": "test.event",
+        "payload": {}
+    })
+    assert resp.status == 401
+
+    # wrong signature
+    resp = await client.post("/api/publications/", json={
+        "event": "test.event",
+        "payload": {}
+    }, headers={
+        "x-hook-signature": "nimp"
+    })
+    assert resp.status == 401
+
+
+async def test_publish_unregistered_event(client, rmock, subscription, publication):
+    """Publish an event and dispatch it to one subscriber"""
+    resp = await publication(**{
         "event": "not.registered",
         "payload": {},
     })
     assert resp.status == 404
 
 
-async def test_publish_event_filter_ok(client, rmock, subscription):
+async def test_publish_event_filter_ok(client, rmock, subscription, publication):
     """Publish an event and dispatch it to one subscriber"""
     rmock.post("http://example.com")
     sub = await subscription(event_filter='$[?(@.hop = "la")]')
@@ -152,7 +185,7 @@ async def test_publish_event_filter_ok(client, rmock, subscription):
         "hop": "la",
         "oops": {"ta": "da"},
     }
-    resp = await client.post("/api/publications/", json={
+    resp = await publication(**{
         "event": "test.event",
         "payload": payload,
     })
@@ -161,7 +194,7 @@ async def test_publish_event_filter_ok(client, rmock, subscription):
     assert rkey in rmock.requests
 
 
-async def test_publish_event_filter_ko(client, rmock, subscription):
+async def test_publish_event_filter_ko(client, rmock, subscription, publication):
     """Publish an event and do _not_ dispatch it to one subscriber"""
     sub = await subscription(event_filter='$[?(@.hop = "NOT")]')
     rmock.post("http://example.com")
@@ -170,7 +203,7 @@ async def test_publish_event_filter_ko(client, rmock, subscription):
         "oops": {"ta": "da"},
     }
     assert sub.status == 201
-    resp = await client.post("/api/publications/", json={
+    resp = await publication(**{
         "event": "test.event",
         "payload": payload,
     })
@@ -179,12 +212,12 @@ async def test_publish_event_filter_ko(client, rmock, subscription):
     assert rkey not in rmock.requests
 
 
-async def test_validation_of_intent_not_done(client, rmock, mocker, subscription):
+async def test_validation_of_intent_not_done(client, rmock, mocker, subscription, publication):
     """Publish an event and do _not_ dispatch it to one subscriber"""
     mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
     rmock.post("http://example.com")
     await subscription()
-    resp = await client.post("/api/publications/", json={
+    resp = await publication(**{
         "event": "test.event",
         "payload": {},
     })
@@ -196,7 +229,7 @@ async def test_validation_of_intent_not_done(client, rmock, mocker, subscription
     assert r[0].kwargs["json"] == {"intention": "pure"}
 
 
-async def test_validation_of_intent_done(client, rmock, mocker, subscription):
+async def test_validation_of_intent_done(client, rmock, mocker, subscription, publication):
     """Publish an event and dispatch it to one subscriber"""
     mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
 
@@ -208,7 +241,7 @@ async def test_validation_of_intent_done(client, rmock, mocker, subscription):
     await subscription()
 
     rmock.post("http://example.com")
-    resp = await client.post("/api/publications/", json={
+    resp = await publication(**{
         "event": "test.event",
         "payload": {},
     })
@@ -221,7 +254,7 @@ async def test_validation_of_intent_done(client, rmock, mocker, subscription):
     assert "payload" in r[1].kwargs["json"]
 
 
-async def test_delayed_validation_of_intent(client, rmock, mocker, subscription):
+async def test_delayed_validation_of_intent(client, rmock, mocker, subscription, publication):
     """Publish an event and dispatch it to one subscriber"""
     mocker.patch("chatelet.config.VALIDATION_OF_INTENT", True)
     # disable this or the test will fail since workers are eager
@@ -243,7 +276,7 @@ async def test_delayed_validation_of_intent(client, rmock, mocker, subscription)
     })
     assert resp.status == 200
 
-    resp = await client.post("/api/publications/", json={
+    resp = await publication(**{
         "event": "test.event",
         "payload": {},
     })

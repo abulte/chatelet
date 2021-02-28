@@ -47,3 +47,8 @@ class DispatchEvent(Schema):
 class HookSecretSchema(Schema):
     class Meta:
         fields = ("x-hook-secret", )
+
+
+class HookSignatureSchema(Schema):
+    class Meta:
+        fields = ("x-hook-signature", )

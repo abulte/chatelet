@@ -13,6 +13,8 @@ from jsonpath2.path import Path
 
 from chatelet import config
 from chatelet import schemas
+from chatelet import utils
+from chatelet import events
 from chatelet.db import Subscription
 from chatelet.queue import queue, retry
 from chatelet.log import log
@@ -81,7 +83,7 @@ class SubscriptionsView(web.View):
     @request_schema(schemas.AddSubscription())
     async def post(self):
         data = self.request["data"]
-        if data["event"] not in config.EVENTS:
+        if not events.get(data["event"]):
             raise web.HTTPNotFound()
 
         sub = Subscription.query
@@ -165,15 +167,25 @@ class PublicationsView(web.View):
                 # dummy to document the dispatch payload
                 "schema": schemas.DispatchEvent(),
             },
+            401: {"descrption": "x-hook-signature not matched"},
             404: {"description": "Event not found"},
             422: {"description": "Validation error"},
         },
     )
+    @headers_schema(schemas.HookSignatureSchema())
     @request_schema(schemas.AddPublication())
     async def post(self):
         data = self.request["data"]
-        if data["event"] not in config.EVENTS:
+        event = events.get(data["event"])
+        if not event:
             raise web.HTTPNotFound()
+
+        secret = event.get("secret")
+        if not secret:
+            raise web.HTTPUnauthorized()
+        sig = utils.sign(await self.request.json(), secret)
+        if self.request.headers.get("x-hook-signature") != sig:
+            raise web.HTTPUnauthorized()
 
         log.debug("Publishing: %s", data)
         subs = Subscription.query\

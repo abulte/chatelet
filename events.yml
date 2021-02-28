@@ -1,4 +1,5 @@
 events:
+  # /!\ be careful when removing an event
   test.event:
     secret: ${TEST_SECRET}
   decapode.resource.modified:
