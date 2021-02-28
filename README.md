@@ -39,6 +39,6 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 - [ ] secure publication (shared secret by event?)
 - [ ] sign dispatch payload (x-hook-signature)
 - [ ] deploy to dokku
-- [ ] declare events and configuration (parser, transformer, dependencies...)
+- [x] declare events and configuration
 - [ ] log publish and dispatch in DB?
 - [ ] API on dispatch job status?

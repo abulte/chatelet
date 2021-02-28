@@ -81,8 +81,6 @@ class SubscriptionsView(web.View):
     @request_schema(schemas.AddSubscription())
     async def post(self):
         data = self.request["data"]
-
-        print('--------->', config.EVENTS, data["event"])
         if data["event"] not in config.EVENTS:
             raise web.HTTPNotFound()
 
@@ -167,13 +165,16 @@ class PublicationsView(web.View):
                 # dummy to document the dispatch payload
                 "schema": schemas.DispatchEvent(),
             },
-            404: {"description": "Not found"},
+            404: {"description": "Event not found"},
             422: {"description": "Validation error"},
         },
     )
     @request_schema(schemas.AddPublication())
     async def post(self):
-        data = await self.request.json()
+        data = self.request["data"]
+        if data["event"] not in config.EVENTS:
+            raise web.HTTPNotFound()
+
         log.debug("Publishing: %s", data)
         subs = Subscription.query\
             .where(Subscription.event == data["event"])\

@@ -134,6 +134,15 @@ async def test_publish(client, rmock, subscription):
     }
 
 
+async def test_publish_unregistered_event(client, rmock, subscription):
+    """Publish an event and dispatch it to one subscriber"""
+    resp = await client.post("/api/publications/", json={
+        "event": "not.registered",
+        "payload": {},
+    })
+    assert resp.status == 404
+
+
 async def test_publish_event_filter_ok(client, rmock, subscription):
     """Publish an event and dispatch it to one subscriber"""
     rmock.post("http://example.com")
