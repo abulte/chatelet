@@ -37,8 +37,30 @@ Add a subscription
 | 200 | Subscription already exists | [AddSubscriptionResponse](#addsubscriptionresponse) |
 | 201 | Subscription created | [AddSubscriptionResponse](#addsubscriptionresponse) |
 | 403 | The url domain is not in accept list |  |
-| 404 | Not found |  |
+| 404 | Event not found |  |
 | 422 | Validation error |  |
+
+### /api/subscriptions/{id}/activate/
+
+#### POST
+##### Summary
+
+Validate intent of a subscription
+
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ---- |
+| x-hook-secret | header |  | No |  |
+| id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Subscription validated |
+| 404 | Not found |
+| 422 | Validation error |
 
 ### /api/publications/
 
@@ -52,13 +74,15 @@ Publish an event
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ---- |
 | body | body |  | No | [AddPublication](#addpublication) |
+| x-hook-signature | header |  | No |  |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Publication created | [DispatchEvent](#dispatchevent) |
-| 404 | Not found |  |
+| 401 |  |  |
+| 404 | Event not found |  |
 | 422 | Validation error |  |
 
 ### Models
@@ -67,19 +91,19 @@ Publish an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| event_filter | string |  | No |
-| active | boolean |  | No |
-| id | integer |  | No |
 | url | string (url) |  | Yes |
+| event_filter | string |  | No |
+| id | integer |  | No |
+| active | boolean |  | No |
 | event | string |  | Yes |
 
 #### AddSubscription
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| event | string |  | Yes |
-| event_filter | string |  | No |
 | url | string (url) |  | Yes |
+| event_filter | string |  | No |
+| event | string |  | Yes |
 
 #### AddPublication
 
@@ -92,7 +116,7 @@ Publish an event
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| subscription | integer |  | No |
-| payload | object |  | No |
 | ok | boolean |  | No |
+| payload | object |  | No |
+| subscription | integer |  | No |
 | event | string |  | Yes |
