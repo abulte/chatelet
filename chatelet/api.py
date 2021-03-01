@@ -25,12 +25,15 @@ if config.EAGER_QUEUES:
     import nest_asyncio
     nest_asyncio.apply()
 
+HEADER_SECRET = "x-hook-secret"
+HEADER_SIGNATURE = "x-hook-signature"
+
 
 async def validate_intent(sub):
     async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
         log.debug("Validating intent for %s (%s)", sub.url, sub.id)
         res = await client.post(sub.url, json={"intention": "pure"}, headers={
-            "x-hook-secret": sub.secret
+            HEADER_SECRET: sub.secret
         })
         if res.ok and res.headers.get('x-hook-secret') == sub.secret:
             sub = await Subscription.get(sub.id)
@@ -54,8 +57,8 @@ class SubscriptionsView(web.View):
     )
     async def get(self):
         subs = await Subscription.query.gino.all()
-        # FIXME: use marshmallow for response (unsafe secret)
-        return web.json_response([s.to_dict() for s in subs])
+        res = schemas.AddSubscriptionResponse().dump(subs, many=True)
+        return web.json_response(res)
 
     @docs(
         tags=["subscribe"],
@@ -65,7 +68,7 @@ class SubscriptionsView(web.View):
                 "schema": schemas.AddSubscriptionResponse(),
                 "description": "Subscription created",
                 "headers": {
-                    "x-hook-secret": {
+                    HEADER_SECRET: {
                         "description": "The secret to use for validation of intent",
                         "type": "uuid",
                     }
@@ -104,8 +107,8 @@ class SubscriptionsView(web.View):
         sub = await Subscription.create(**data)
         if config.VALIDATION_OF_INTENT and config.VALIDATION_OF_INTENT_IMMEDIATE:
             queue().enqueue(validate_intent, sub, retry=retry)
-        # FIXME: use marshmallow for serialization
-        return web.json_response(sub.to_dict(), status=201)
+        res = schemas.AddSubscriptionResponse().dump(sub)
+        return web.json_response(res, status=201)
 
 
 @docs(
@@ -127,7 +130,7 @@ async def activate_subscription(request):
     sub = await Subscription.get(sub_id)
     if not sub:
         raise web.HTTPNotFound()
-    if request.headers.get("x-hook-secret") == sub.secret:
+    if request.headers.get(HEADER_SECRET) == sub.secret:
         await sub.update(active=True).apply()
         log.debug("Intent validated for %s (%s)", sub.url, sub.id)
         return web.json_response({"ok": True})
@@ -137,8 +140,11 @@ async def activate_subscription(request):
 
 
 async def dispatch(subscription, data):
-    # NB: using a new ClientSession for each dispatch is suboptimal
-    # but how to reuse a session in worker threads?
+    """Dispatch an event to a subscription
+
+    NB: using a new ClientSession for each dispatch is suboptimal
+    but how to reuse a session in worker threads?
+    """
     async with ClientSession(raise_for_status=True, timeout=ClientTimeout(total=15)) as client:
         log.debug("Dispatching %s to %s (%s)",
                   subscription.event, subscription.url, subscription.id)
@@ -147,12 +153,17 @@ async def dispatch(subscription, data):
             if not list(q):
                 log.debug("Skipped because of event filter: %s", subscription.event_filter)
                 return
-        await client.post(subscription.url, json={
+        payload = {
             "ok": True,
             "event": subscription.event,
             "event_filter": subscription.event_filter,
             "subscription": subscription.id,
             "payload": data["payload"],
+        }
+        if subscription.secret:
+            sig = utils.sign(payload, subscription.secret)
+        await client.post(subscription.url, json=payload, headers={
+            HEADER_SIGNATURE: sig
         })
 
 
@@ -165,6 +176,7 @@ class PublicationsView(web.View):
             201: {
                 "description": "Publication created",
                 # dummy to document the dispatch payload
+                # TODO: document x-hook-signature
                 "schema": schemas.DispatchEvent(),
             },
             401: {"descrption": "x-hook-signature not matched"},
@@ -184,7 +196,7 @@ class PublicationsView(web.View):
         if not secret:
             raise web.HTTPUnauthorized()
         sig = utils.sign(await self.request.json(), secret)
-        if self.request.headers.get("x-hook-signature") != sig:
+        if self.request.headers.get(HEADER_SIGNATURE) != sig:
             raise web.HTTPUnauthorized()
 
         log.debug("Publishing: %s", data)

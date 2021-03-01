@@ -13,6 +13,7 @@ from yarl import URL
 from chatelet import utils
 from chatelet.app import app_factory
 from chatelet.app import db
+from chatelet.db import Subscription
 
 nest_asyncio.apply()
 pytestmark = pytest.mark.asyncio
@@ -143,6 +144,9 @@ async def test_publish(client, rmock, subscription, publication):
         "payload": payload,
         "subscription": 1
     }
+    sub_db = await Subscription.get(1)
+    sig = utils.sign(r[0].kwargs["json"], sub_db.secret)
+    assert r[0].kwargs["headers"]["x-hook-signature"] == sig
 
 
 async def test_publish_wrong_signature(client):
@@ -252,8 +256,9 @@ async def test_delayed_validation_of_intent(client, rmock, mocker, subscription,
     })
     assert resp.status == 422
     # validate it
+    db_sub = await Subscription.get(sub["id"])
     resp = await client.post(f"/api/subscriptions/{sub['id']}/activate/", headers={
-        "x-hook-secret": sub["secret"]
+        "x-hook-secret": db_sub.secret,
     })
     assert resp.status == 200
 
