@@ -24,6 +24,12 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
 
 `make work`
 
+### Alembic / database
+
+Set `DATABASE_URL` env var.
+
+`alembic upgrade head`
+
 ## References
 
 - https://resthooks.org
@@ -38,7 +44,7 @@ _Image source: https://ravikanthblog.files.wordpress.com/2017/05/pubsub-2.png_
     - [x] delayed
 - [x] declare events and configuration
 - [ ] secure publication (shared secret by event?)
-- [ ] sign dispatch payload (x-hook-signature)
-- [ ] deploy to dokku
+- [x] sign dispatch payload (x-hook-signature)
+- [x] deploy to dokku
 - [ ] log publish and dispatch in DB?
 - [ ] API on dispatch job status?
