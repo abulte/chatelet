@@ -37,7 +37,7 @@ def setup_config(setup, mocker):
     mocker.patch("chatelet.config.ALLOWED_DOMAINS", ["example.com"])
     mocker.patch("chatelet.config.EAGER_QUEUES", True)
     mocker.patch("chatelet.config.VALIDATION_OF_INTENT", False)
-    mocker.patch("chatelet.queue.redis_conn", FakeStrictRedis())
+    mocker.patch("chatelet.queue.redis_conn", FakeStrictRedis)
 
 
 @pytest.fixture(autouse=True)
