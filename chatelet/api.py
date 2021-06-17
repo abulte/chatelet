@@ -217,6 +217,12 @@ class PublicationsView(web.View):
         raise web.HTTPCreated()
 
 
+@routes.view("/check/")
+class CheckView(web.View):
+    async def get(self):
+        return web.json_response({"ok": True})
+
+
 def api_factory():
     api = web.Application()
     api.add_routes(routes)
