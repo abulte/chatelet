@@ -4,3 +4,7 @@ events:
     secret: ${TEST_SECRET}
   decapode.resource.modified:
     secret: ${DECAPODE_SECRET}
+  datagouvfr.dataset.created:
+    secret: ${DATAGOUVFR_SECRET}
+  datagouvfr.dataset.discussed:
+    secret: ${DATAGOUVFR_SECRET}

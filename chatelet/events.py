@@ -14,7 +14,7 @@ def get_all():
         events = safe_load(efile.read())["events"]
 
     # replace env vars with values
-    for e, config in events.items():
+    for _, config in events.items():
         for k, v in config.items():
             match = re.match(r"\${(.*)}$", v)
             if match:

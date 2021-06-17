@@ -15,5 +15,10 @@ async def apidoc():
             f.write(await resp.text())
 
 
+@cli
+def create_subscriber(event, url):
+    pass
+
+
 if __name__ == "__main__":
     run()
