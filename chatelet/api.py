@@ -1,5 +1,3 @@
-import os
-
 from uuid import uuid4
 from urllib.parse import urlparse
 
@@ -29,7 +27,6 @@ if config.EAGER_QUEUES:
 
 HEADER_SECRET = "x-hook-secret"
 HEADER_SIGNATURE = "x-hook-signature"
-HEADER_API_KEY = "x-api-key"
 
 
 async def validate_intent(sub):
@@ -180,11 +177,9 @@ class PublicationsView(web.View):
                 "description": "Publication created",
                 # dummy to document the dispatch payload
                 # TODO: document x-hook-signature
-                # TODO: document x-api-key
                 "schema": schemas.DispatchEvent(),
             },
-            401: {"description": "x-hook-signature not matched"},
-            403: {"description": "Unauthorized"},
+            401: {"descrption": "x-hook-signature not matched"},
             404: {"description": "Event not found"},
             422: {"description": "Validation error"},
         },
@@ -203,10 +198,6 @@ class PublicationsView(web.View):
         sig = utils.sign(await self.request.json(), secret)
         if self.request.headers.get(HEADER_SIGNATURE) != sig:
             raise web.HTTPUnauthorized()
-
-        api_key = os.getenv("PUBLISH_API_KEY")
-        if self.request.headers.get(HEADER_API_KEY) != api_key:
-            raise web.HTTPForbidden()
 
         log.debug("Publishing: %s", data)
         subs = Subscription.query\

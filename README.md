@@ -43,9 +43,7 @@ Set `DATABASE_URL` env var.
     - [x] immediate
     - [x] delayed
 - [x] declare events and configuration
-- [ ] secure publication
-    - [x] simple global api key
-    - shared secret by event?
+- [ ] secure publication (shared secret by event?)
 - [x] sign dispatch payload (x-hook-signature)
 - [x] deploy to dokku
 - [ ] log publish and dispatch in DB?
