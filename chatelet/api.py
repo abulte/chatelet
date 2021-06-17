@@ -179,7 +179,7 @@ class PublicationsView(web.View):
                 # TODO: document x-hook-signature
                 "schema": schemas.DispatchEvent(),
             },
-            401: {"descrption": "x-hook-signature not matched"},
+            401: {"description": "x-hook-signature not matched"},
             404: {"description": "Event not found"},
             422: {"description": "Validation error"},
         },

@@ -43,8 +43,9 @@ Set `DATABASE_URL` env var.
     - [x] immediate
     - [x] delayed
 - [x] declare events and configuration
-- [ ] secure publication (shared secret by event?)
+- [x] secure publication (shared secret by event, cf `events.yml`)
 - [x] sign dispatch payload (x-hook-signature)
 - [x] deploy to dokku
+- [ ] handle `events.yml` as a tree with common values (eg secret for datagouvfr.*)
 - [ ] log publish and dispatch in DB?
 - [ ] API on dispatch job status?
