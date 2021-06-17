@@ -51,4 +51,4 @@ class HookSecretSchema(Schema):
 
 class HookSignatureSchema(Schema):
     class Meta:
-        fields = ("x-hook-signature", )
+        fields = ("x-hook-signature", "x-api-key")

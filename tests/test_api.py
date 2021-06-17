@@ -18,6 +18,7 @@ from chatelet.db import Subscription
 nest_asyncio.apply()
 pytestmark = pytest.mark.asyncio
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/postgres"
+API_KEY = "apikey"
 
 
 # this really really really should run first (or "prod" db will get erased)
@@ -26,6 +27,7 @@ def setup():
     with mock.patch.dict(os.environ, {
         "DATABASE_URL": DATABASE_URL,
         "TEST_SECRET": "suchsecret",
+        "PUBLISH_API_KEY": API_KEY,
     }):
         yield
 
@@ -71,7 +73,8 @@ async def publication(client):
     async def create(**kwargs):
         sig = utils.sign(kwargs, os.getenv("TEST_SECRET"))
         return await client.post("/api/publications/", json=kwargs, headers={
-            "x-hook-signature": sig
+            "x-hook-signature": sig,
+            "x-api-key": API_KEY,
         })
     return partial(create, event="test.event", payload={})
 
