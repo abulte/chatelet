@@ -40,7 +40,7 @@ def setup_config(setup, mocker):
 
 @pytest.fixture(autouse=True)
 async def client(setup_config):
-    app = app_factory()
+    app = await app_factory()
     async with TestClient(TestServer(app)) as client:
         yield client
 
