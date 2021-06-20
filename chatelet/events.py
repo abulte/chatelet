@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 
@@ -6,24 +7,38 @@ from yaml import safe_load
 context = {}
 
 
-def get_all():
+def get_all() -> dict:
     if "events" in context:
         return context["events"]
 
     with open("events.yml") as efile:
         events = safe_load(efile.read())["events"]
 
-    # replace env vars with values
+    # replace secret with values
     for _, config in events.items():
-        for k, v in config.items():
-            match = re.match(r"\${(.*)}$", v)
+        if "secret" in config:
+            match = re.match(r"\${(.*)}$", config["secret"])
             if match:
-                config[k] = os.getenv(match[1])
+                config["secret"] = os.getenv(match[1])
 
     context["events"] = events
     return events
 
 
-def get(event_name):
+def get(event_name: str) -> dict:
+    """Map `namespace.xxx.yyy` to the config dict equivalent"""
     events = get_all()
-    return events.get(event_name)
+    splitted = event_name.split(".")
+    conf_dict = copy.deepcopy(events)
+    root = conf_dict.pop(splitted[0], None)
+    if not root:
+        return None
+    _walk = copy.deepcopy(root)
+    for idx, part in enumerate(splitted[1:]):
+        _walk = _walk.pop(part, None)
+        if not _walk and idx != len(splitted):
+            return None
+    return {
+        "event": event_name,
+        "secret": root.get("secret", None)
+    }

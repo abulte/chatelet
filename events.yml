@@ -1,10 +1,24 @@
+# /!\ be careful when removing an event
+
+# Rules:
+# - a secret has to be a root property for a namespace
+
 events:
-  # /!\ be careful when removing an event
-  test.event:
-    secret: ${TEST_SECRET}
-  decapode.resource.modified:
+
+  # production stuff
+  decapode:
     secret: ${DECAPODE_SECRET}
-  datagouvfr.dataset.created:
+    resource:
+      modified:
+  datagouvfr:
     secret: ${DATAGOUVFR_SECRET}
-  datagouvfr.dataset.discussed:
-    secret: ${DATAGOUVFR_SECRET}
+    dataset:
+      created:
+      discussed:
+
+  # don't remove me, i'm used for tests
+  # TODO: move me to a test file
+  test:
+    secret: ${TEST_SECRET}
+    event:
+      subevent:
