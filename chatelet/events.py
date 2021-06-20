@@ -36,7 +36,7 @@ def get(event_name: str) -> dict:
     _walk = copy.deepcopy(root)
     for idx, part in enumerate(splitted[1:]):
         _walk = _walk.pop(part, None)
-        if not _walk and idx != len(splitted):
+        if not _walk and idx != len(splitted[1:]) - 1:
             return None
     return {
         "event": event_name,

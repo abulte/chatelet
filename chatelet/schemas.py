@@ -23,7 +23,7 @@ class JSONPathField(fields.Str):
 class AddSubscription(Schema):
     url = fields.Url(required=True)
     event = fields.Str(required=True)
-    event_filter = JSONPathField(default=None)
+    event_filter = JSONPathField(default=None, allow_none=True)
 
 
 class AddSubscriptionResponse(AddSubscription):

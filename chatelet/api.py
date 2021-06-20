@@ -92,7 +92,7 @@ class SubscriptionsView(web.View):
         sub = Subscription.query
         sub = sub.where(Subscription.event == data["event"])
         sub = sub.where(Subscription.url == data["url"])
-        if "event_filter" in data:
+        if data.get("event_filter"):
             sub = sub.where(Subscription.event_filter == data["event_filter"])
         sub = await sub.gino.first()
         if sub:

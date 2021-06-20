@@ -18,6 +18,7 @@ from chatelet.db import Subscription
 nest_asyncio.apply()
 pytestmark = pytest.mark.asyncio
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/postgres"
+TEST_EVENT_NAME = "test.event.subevent"
 
 
 # this really really really should run first (or "prod" db will get erased)
@@ -63,7 +64,7 @@ def rmock():
 async def subscription(client):
     async def create(**kwargs):
         return await client.post("/api/subscriptions/", json=kwargs)
-    return partial(create, event="test.event", url="http://example.com")
+    return partial(create, event=TEST_EVENT_NAME, url="http://example.com")
 
 
 @pytest.fixture
@@ -73,12 +74,12 @@ async def publication(client):
         return await client.post("/api/publications/", json=kwargs, headers={
             "x-hook-signature": sig
         })
-    return partial(create, event="test.event", payload={})
+    return partial(create, event=TEST_EVENT_NAME, payload={})
 
 
 async def test_add_subscription_not_access_list(client):
     resp = await client.post("/api/subscriptions/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "url": "http://nimportquoi.com"
     })
     assert resp.status == 403
@@ -89,7 +90,7 @@ async def test_add_subscription(client, subscription):
     assert sub.status == 201
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "url": "http://example.com"
     })
     assert resp.status == 200
@@ -106,14 +107,14 @@ async def test_add_subscription_error(client, subscription):
     assert all([e in data for e in ["url", "event"]])
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "url": "notanurl"
     })
     assert resp.status == 422
     assert "url" in await resp.json()
 
     resp = await client.post("/api/subscriptions/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "event_filter": "notajsonpath",
         "url": "http://example.com",
     })
@@ -138,7 +139,7 @@ async def test_publish(client, rmock, subscription, publication):
     assert rkey in rmock.requests
     r = rmock.requests[rkey]
     assert r[0].kwargs["json"] == {
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "event_filter": None,
         "ok": True,
         "payload": payload,
@@ -152,14 +153,14 @@ async def test_publish(client, rmock, subscription, publication):
 async def test_publish_wrong_signature(client):
     # no signature
     resp = await client.post("/api/publications/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "payload": {}
     })
     assert resp.status == 401
 
     # wrong signature
     resp = await client.post("/api/publications/", json={
-        "event": "test.event",
+        "event": TEST_EVENT_NAME,
         "payload": {}
     }, headers={
         "x-hook-signature": "nimp"
